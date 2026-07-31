@@ -15,10 +15,10 @@ Licence](https://www.parliament.uk/site-information/copyright-parliament/open-pa
 Work in progress, built phase by phase:
 
 - [x] Phase 0 — project setup
-- [ ] Phase 1 — Hansard API fetch
-- [ ] Phase 2 — SQLite storage
-- [ ] Phase 3 — static dashboard
-- [ ] Phase 4 — charts, filters, false-positive cleanup
+- [x] Phase 1 — Hansard API fetch
+- [x] Phase 2 — SQLite storage
+- [x] Phase 3 — static dashboard
+- [x] Phase 4 — charts, filters, false-positive cleanup
 - [ ] Phase 5 — automation & deployment
 
 ## Setup
@@ -31,5 +31,11 @@ pip install -r requirements.txt
 
 ## Usage
 
-Not yet available — lands in Phase 2 (`python cli.py fetch`) and Phase 3
-(`python cli.py export`).
+```bash
+python cli.py fetch     # pull mentions from Hansard into data/ai_mentions.db
+python cli.py filter    # flag known false positives (see src/ai_tracker/filters.py)
+python cli.py export    # write docs/data/mentions.json + .csv for the dashboard
+```
+
+Open `docs/index.html` via a local server (e.g. `python3 -m http.server` from
+`docs/`) to view the dashboard.
