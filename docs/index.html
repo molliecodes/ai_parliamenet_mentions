@@ -4,17 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UK Parliament AI Mention Tracker</title>
-  <style>
-    /* Structural only — iframe-friendliness (fluid width, no fixed height
-       assumptions). Visual polish is a Phase 4 concern. */
-    html, body { margin: 0; padding: 0; width: 100%; }
-    table { width: 100%; border-collapse: collapse; }
-    td, th { text-align: left; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>UK Parliament AI Mention Tracker</h1>
   <p id="count">Loading…</p>
+
+  <div id="chart-container">
+    <svg id="chart" role="img" aria-label="Mentions of AI per month"></svg>
+  </div>
+
+  <div id="filters">
+    <label>
+      House
+      <select id="filter-house">
+        <option value="">All</option>
+        <option value="Commons">Commons</option>
+        <option value="Lords">Lords</option>
+      </select>
+    </label>
+    <label>
+      Party
+      <select id="filter-party">
+        <option value="">All</option>
+      </select>
+    </label>
+    <label>
+      Speaker
+      <input type="text" id="filter-speaker" placeholder="Search by name…">
+    </label>
+  </div>
+
   <table id="mentions">
     <thead>
       <tr>

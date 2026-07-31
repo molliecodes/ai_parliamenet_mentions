@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS mentions (
     hansard_url         TEXT NOT NULL,
     matched_terms       TEXT NOT NULL,
     categories          TEXT,
+    excluded            INTEGER NOT NULL DEFAULT 0,
+    exclusion_reason    TEXT,
     fetched_at          TEXT NOT NULL
 );
 """
@@ -34,6 +36,11 @@ CREATE TABLE IF NOT EXISTS mentions (
 def get_connection(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute(SCHEMA)
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(mentions)")}
+    if "excluded" not in existing_columns:
+        conn.execute("ALTER TABLE mentions ADD COLUMN excluded INTEGER NOT NULL DEFAULT 0")
+    if "exclusion_reason" not in existing_columns:
+        conn.execute("ALTER TABLE mentions ADD COLUMN exclusion_reason TEXT")
     conn.commit()
     return conn
 

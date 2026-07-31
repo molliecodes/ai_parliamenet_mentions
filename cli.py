@@ -5,8 +5,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from ai_tracker import db
 from ai_tracker.fetch import run_fetch
 from ai_tracker.export import export_json, export_csv
+from ai_tracker.filters import apply_known_exclusions
 
 DEFAULT_DB_PATH = Path(__file__).parent / "data" / "ai_mentions.db"
 DEFAULT_BACKFILL_YEARS = 2
@@ -22,6 +24,7 @@ def main():
     fetch_parser.add_argument("--end", help="yyyy-mm-dd (default: today)")
 
     subparsers.add_parser("export", help="Export the database to docs/data/ for the dashboard")
+    subparsers.add_parser("filter", help="Apply known false-positive exclusions")
 
     args = parser.parse_args()
 
@@ -38,6 +41,12 @@ def main():
         json_count = export_json(str(DEFAULT_DB_PATH), str(DOCS_DATA_DIR / "mentions.json"))
         csv_count = export_csv(str(DEFAULT_DB_PATH), str(DOCS_DATA_DIR / "mentions.csv"))
         print(f"Exported {json_count} mentions to docs/data/mentions.json and {csv_count} to mentions.csv")
+
+    elif args.command == "filter":
+        conn = db.get_connection(str(DEFAULT_DB_PATH))
+        updated = apply_known_exclusions(conn)
+        conn.close()
+        print(f"Marked {updated} known false positives as excluded.")
 
 
 if __name__ == "__main__":

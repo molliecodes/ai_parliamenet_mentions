@@ -27,7 +27,7 @@ def _fetch_rows(db_path):
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         "SELECT speaker, party, house, date, debate_title, text, hansard_url, matched_terms "
-        "FROM mentions ORDER BY date DESC"
+        "FROM mentions WHERE excluded = 0 ORDER BY date DESC"
     ).fetchall()
     conn.close()
     return rows
