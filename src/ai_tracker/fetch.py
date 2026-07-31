@@ -5,7 +5,7 @@ merges multi-term matches into single rows, and stores them idempotently.
 from datetime import datetime, timezone
 
 from ai_tracker import db
-from ai_tracker.hansard_client import get_member_party, search_contributions
+from ai_tracker.hansard_client import clean_contribution_text, get_member_party, search_contributions
 
 # Curated terms chosen for precision; bare "AI" added separately for recall
 # (per the recall-vs-precision decision — bare-AI hits get filtered for
@@ -63,7 +63,7 @@ def run_fetch(db_path, start_date=None, end_date=None):
             "house": result["House"],
             "date": result["SittingDate"][:10],
             "debate_title": result["DebateSection"],
-            "text": result["ContributionTextFull"],
+            "text": clean_contribution_text(result["ContributionTextFull"]),
             "hansard_url": result["HansardUrl"],
             "matched_terms": sorted(entry["matched_terms"]),
             "fetched_at": fetched_at,

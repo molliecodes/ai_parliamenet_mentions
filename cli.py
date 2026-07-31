@@ -6,9 +6,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from ai_tracker.fetch import run_fetch
+from ai_tracker.export import export_json, export_csv
 
 DEFAULT_DB_PATH = Path(__file__).parent / "data" / "ai_mentions.db"
 DEFAULT_BACKFILL_YEARS = 2
+DOCS_DATA_DIR = Path(__file__).parent / "docs" / "data"
 
 
 def main():
@@ -19,6 +21,8 @@ def main():
     fetch_parser.add_argument("--start", help="yyyy-mm-dd (default: 2 years ago)")
     fetch_parser.add_argument("--end", help="yyyy-mm-dd (default: today)")
 
+    subparsers.add_parser("export", help="Export the database to docs/data/ for the dashboard")
+
     args = parser.parse_args()
 
     if args.command == "fetch":
@@ -28,6 +32,12 @@ def main():
         print(f"Fetching mentions from {start} to {end}...")
         seen, inserted = run_fetch(str(DEFAULT_DB_PATH), start_date=start, end_date=end)
         print(f"Saw {seen} distinct contributions, inserted {inserted} new rows.")
+
+    elif args.command == "export":
+        DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        json_count = export_json(str(DEFAULT_DB_PATH), str(DOCS_DATA_DIR / "mentions.json"))
+        csv_count = export_csv(str(DEFAULT_DB_PATH), str(DOCS_DATA_DIR / "mentions.csv"))
+        print(f"Exported {json_count} mentions to docs/data/mentions.json and {csv_count} to mentions.csv")
 
 
 if __name__ == "__main__":

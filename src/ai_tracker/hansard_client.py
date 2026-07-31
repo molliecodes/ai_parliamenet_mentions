@@ -5,6 +5,7 @@ spec at /swagger/docs/v1 and inspecting actual search responses — see the
 Phase 1 checkpoint discussion for the raw examples this was built from.
 """
 
+import html
 import re
 import time
 
@@ -28,6 +29,15 @@ def _debate_url(result):
     date = result["SittingDate"][:10]
     slug = _slugify(result["DebateSection"])
     return f"{PUBLIC_URL}/{result['House']}/{date}/debates/{result['DebateSectionExtId']}/{slug}"
+
+
+def clean_contribution_text(text):
+    """Written contributions in particular embed markup — column-number
+    <span>s, <table>/<td> for data tables, custom <QuestionText>/<QNum>
+    tags for Written Questions. Strip it all to plain readable text."""
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def search_contributions(search_term, contribution_type="Spoken", start_date=None, end_date=None, page_size=50):
