@@ -12,14 +12,32 @@ Licence](https://www.parliament.uk/site-information/copyright-parliament/open-pa
 
 ## Status
 
-Work in progress, built phase by phase:
+All v1 phases complete. Live at
+**https://molliecodes.github.io/ai_parliamenet_mentions/**, updating itself
+daily via GitHub Actions.
 
 - [x] Phase 0 — project setup
 - [x] Phase 1 — Hansard API fetch
 - [x] Phase 2 — SQLite storage
 - [x] Phase 3 — static dashboard
 - [x] Phase 4 — charts, filters, false-positive cleanup
-- [ ] Phase 5 — automation & deployment
+- [x] Phase 5 — automation & deployment
+
+## Embedding
+
+```html
+<iframe
+  src="https://molliecodes.github.io/ai_parliamenet_mentions/"
+  width="100%"
+  height="800"
+  style="border:none;"
+></iframe>
+```
+
+800px is a reasonable default that shows the chart, filters, and a good
+chunk of the table without the embed dominating a page — the page itself
+scrolls internally within that height, since the table isn't paginated.
+Adjust to taste for your layout.
 
 ## Setup
 
