@@ -1,5 +1,31 @@
 let allMentions = [];
 
+// Fallback color (DEFAULT_PARTY_COLOR) covers any party not listed here —
+// new/minor parties can appear in future daily fetches without breaking.
+const PARTY_COLORS = {
+  "Labour": "#E4003B",
+  "Labour (Co-op)": "#E4003B",
+  "Conservative": "#0087DC",
+  "Liberal Democrat": "#FAA61A",
+  "Crossbench": "#888888",
+  "Non-affiliated": "#999999",
+  "Independent": "#AAAAAA",
+  "Scottish National Party": "#E8CB2D",
+  "Bishops": "#7E5CAD",
+  "Green Party": "#6AB023",
+  "Democratic Unionist Party": "#D5282C",
+  "Reform UK": "#12B6CF",
+  "Plaid Cymru": "#005B54",
+  "Traditional Unionist Voice": "#0C3B5C",
+  "Ulster Unionist Party": "#6699CC",
+  "Lord Speaker": "#777777",
+};
+const DEFAULT_PARTY_COLOR = "#777777";
+
+function partyColor(party) {
+  return PARTY_COLORS[party] || DEFAULT_PARTY_COLOR;
+}
+
 function monthKey(dateStr) {
   return dateStr.slice(0, 7);
 }
@@ -110,11 +136,101 @@ function renderChart(mentions) {
   });
 }
 
+function renderTopSpeakers(mentions, limit = 10) {
+  const list = document.getElementById("top-speakers");
+  list.innerHTML = "";
+
+  if (mentions.length === 0) {
+    list.innerHTML = "<li class=\"ranking-empty\">No mentions match these filters.</li>";
+    return;
+  }
+
+  const counts = new Map();
+  for (const m of mentions) {
+    const entry = counts.get(m.speaker) || { party: m.party, count: 0 };
+    entry.count += 1;
+    counts.set(m.speaker, entry);
+  }
+
+  const ranked = [...counts.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, limit);
+
+  for (const [speaker, { party, count }] of ranked) {
+    const item = document.createElement("li");
+
+    const dot = document.createElement("span");
+    dot.className = "party-dot";
+    dot.style.backgroundColor = partyColor(party);
+
+    const name = document.createElement("span");
+    name.className = "ranking-name";
+    name.textContent = speaker;
+
+    const partyLabel = document.createElement("span");
+    partyLabel.className = "ranking-party";
+    partyLabel.textContent = party || "No party listed";
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "ranking-count";
+    countLabel.textContent = count;
+
+    item.append(dot, name, partyLabel, countLabel);
+    list.appendChild(item);
+  }
+}
+
+function renderPartyRanking(mentions) {
+  const container = document.getElementById("party-ranking");
+  container.innerHTML = "";
+
+  if (mentions.length === 0) {
+    container.innerHTML = "<p class=\"ranking-empty\">No mentions match these filters.</p>";
+    return;
+  }
+
+  const counts = new Map();
+  for (const m of mentions) {
+    const party = m.party || "No party listed";
+    counts.set(party, (counts.get(party) || 0) + 1);
+  }
+
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const maxCount = ranked[0][1];
+
+  for (const [party, count] of ranked) {
+    const row = document.createElement("div");
+    row.className = "party-row";
+
+    const label = document.createElement("span");
+    label.className = "party-row-label";
+    label.textContent = party;
+    label.title = party;
+
+    const barTrack = document.createElement("span");
+    barTrack.className = "party-row-track";
+    const bar = document.createElement("span");
+    bar.className = "party-row-bar";
+    bar.style.width = `${(count / maxCount) * 100}%`;
+    bar.style.backgroundColor = partyColor(party);
+    barTrack.appendChild(bar);
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "party-row-count";
+    countLabel.textContent = count;
+
+    row.append(label, barTrack, countLabel);
+    container.appendChild(row);
+  }
+}
+
 function render() {
   const filtered = applyFilters(allMentions, currentFilters());
   document.getElementById("count").textContent =
     `${filtered.length} of ${allMentions.length} mentions of AI shown`;
   renderChart(filtered);
+  renderTopSpeakers(filtered);
+  renderPartyRanking(filtered);
   renderTable(filtered);
 }
 
