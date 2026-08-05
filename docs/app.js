@@ -304,6 +304,41 @@ function filteredMentions() {
   });
 }
 
+function csvField(value) {
+  const str = String(value ?? "");
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function mentionsToCSV(mentions) {
+  const header = ["Date", "House", "Speaker", "Party", "Debate", "Mention", "Hansard URL"];
+  const lines = [header.map(csvField).join(",")];
+  for (const m of mentions) {
+    lines.push(
+      [m.date, m.house, m.speaker, m.party || "", m.debate_title, m.text, m.hansard_url]
+        .map(csvField)
+        .join(",")
+    );
+  }
+  return lines.join("\r\n");
+}
+
+function downloadCSV() {
+  const csv = mentionsToCSV(filteredMentions());
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.download = `ai-parliament-mentions-${today}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function renderList() {
   const allRows = filteredMentions();
   const rows = allRows.slice(0, state.visibleCount);
@@ -338,6 +373,7 @@ function renderList() {
     dateCell.textContent = formatDate(mention.date);
 
     const houseCell = document.createElement("div");
+    houseCell.className = "cell-house";
     const housePill = document.createElement("span");
     housePill.className = "house-pill";
     housePill.textContent = mention.house;
@@ -439,6 +475,7 @@ fetch("./data/mentions.json")
       state.visibleCount = PAGE_SIZE;
       renderList();
     });
+    document.getElementById("export-csv-btn").addEventListener("click", downloadCSV);
 
     renderGlobal();
   });
