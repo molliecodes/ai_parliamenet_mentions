@@ -177,6 +177,10 @@ h1 {
   padding: 28px 28px 24px;
 }
 
+.chart-card-wide {
+  grid-column: 1 / -1;
+}
+
 .chart-title {
   font-family: "Source Serif 4", serif;
   font-size: 20px;
