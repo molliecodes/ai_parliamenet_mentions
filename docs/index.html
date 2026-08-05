@@ -3,62 +3,76 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UK Parliament AI Mention Tracker</title>
+  <title>AI in Parliament</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>UK Parliament AI Mention Tracker</h1>
-  <p id="count">Loading…</p>
+  <div class="page">
 
-  <div id="chart-container">
-    <svg id="chart" role="img" aria-label="Mentions of AI per month"></svg>
-  </div>
+    <div class="eyebrow">Parliamentary Monitor</div>
+    <h1>AI in Parliament</h1>
+    <p class="subhead">Tracking every mention of artificial intelligence across the House of Commons and House of Lords, from committee rooms to the despatch box.</p>
+    <div class="divider"></div>
 
-  <div id="rankings">
-    <div class="ranking-panel">
-      <h2>Who mentions AI most</h2>
-      <ol id="top-speakers"></ol>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-label">Total mentions</div>
+        <div class="stat-value" id="stat-total">–</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Debates covered</div>
+        <div class="stat-value" id="stat-debates">–</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Commons share</div>
+        <div class="stat-value" id="stat-commons-pct">–</div>
+      </div>
+      <div class="trend">
+        <div class="trend-header">
+          <div class="stat-label">Mentions by month</div>
+          <select id="trend-year"></select>
+        </div>
+        <div class="trend-bars" id="trend-bars"></div>
+      </div>
     </div>
-    <div class="ranking-panel">
-      <h2>By party</h2>
-      <div id="party-ranking"></div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Who mentions AI most</div>
+        <div class="chart-subtitle">Top speakers by mention count</div>
+        <div class="chart-rows" id="chart-speakers"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">By party</div>
+        <div class="chart-subtitle">Mentions grouped by party affiliation</div>
+        <div class="chart-rows" id="chart-parties"></div>
+      </div>
     </div>
-  </div>
 
-  <div id="filters">
-    <label>
-      House
-      <select id="filter-house">
-        <option value="">All</option>
-        <option value="Commons">Commons</option>
-        <option value="Lords">Lords</option>
-      </select>
-    </label>
-    <label>
-      Party
-      <select id="filter-party">
-        <option value="">All</option>
-      </select>
-    </label>
-    <label>
-      Speaker
-      <input type="text" id="filter-speaker" placeholder="Search by name…">
-    </label>
-  </div>
+    <div class="filter-bar">
+      <div class="segmented" id="house-segmented"></div>
+      <div class="filter-controls">
+        <select id="filter-party">
+          <option value="">All</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Search speakers or debates…">
+      </div>
+    </div>
 
-  <table id="mentions">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>House</th>
-        <th>Speaker</th>
-        <th>Party</th>
-        <th>Debate</th>
-        <th>Mention</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <div class="list-header">
+      <div>Date</div>
+      <div>House</div>
+      <div>Speaker</div>
+      <div>Debate</div>
+      <div></div>
+    </div>
+
+    <div id="mentions-list"></div>
+    <div id="empty-state" class="empty-state" hidden>No mentions match these filters.</div>
+
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

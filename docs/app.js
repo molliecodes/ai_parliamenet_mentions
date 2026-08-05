@@ -1,38 +1,184 @@
-let allMentions = [];
-
-// Fallback color (DEFAULT_PARTY_COLOR) covers any party not listed here —
-// new/minor parties can appear in future daily fetches without breaking.
+// Fallback (DEFAULT_PARTY_COLOR) covers any party not listed — new/minor
+// parties can appear in future daily fetches without breaking. The 7-color
+// core palette (Labour, Conservative, Liberal Democrat, SNP, Green, Reform UK,
+// Crossbench) is from the design doc; the rest extend it in the same muted
+// family, with Labour (Co-op) reusing Labour's color since it's Labour-affiliated.
 const PARTY_COLORS = {
-  "Labour": "#E4003B",
-  "Labour (Co-op)": "#E4003B",
-  "Conservative": "#0087DC",
-  "Liberal Democrat": "#FAA61A",
-  "Crossbench": "#888888",
-  "Non-affiliated": "#999999",
-  "Independent": "#AAAAAA",
-  "Scottish National Party": "#E8CB2D",
-  "Bishops": "#7E5CAD",
-  "Green Party": "#6AB023",
-  "Democratic Unionist Party": "#D5282C",
-  "Reform UK": "#12B6CF",
-  "Plaid Cymru": "#005B54",
-  "Traditional Unionist Voice": "#0C3B5C",
-  "Ulster Unionist Party": "#6699CC",
-  "Lord Speaker": "#777777",
+  "Labour": "#C8393E",
+  "Labour (Co-op)": "#C8393E",
+  "Conservative": "#1E76B4",
+  "Liberal Democrat": "#E8A33D",
+  "Scottish National Party": "#B99A2E",
+  "Green Party": "#4C8C2B",
+  "Reform UK": "#1FA0AC",
+  "Crossbench": "#8A8578",
+  "Independent": "#8A8578",
+  "Non-affiliated": "#8A8578",
+  "Bishops": "#6B5F52",
+  "Lord Speaker": "#8A8578",
+  "Democratic Unionist Party": "#8C4A3F",
+  "Plaid Cymru": "#2F6B4F",
+  "Ulster Unionist Party": "#5F7A9C",
+  "Traditional Unionist Voice": "#7A6A50",
+  "Your Party": "#8A8578",
 };
-const DEFAULT_PARTY_COLOR = "#777777";
+const DEFAULT_PARTY_COLOR = "#8A8578";
 
 function partyColor(party) {
   return PARTY_COLORS[party] || DEFAULT_PARTY_COLOR;
 }
 
-function monthKey(dateStr) {
-  return dateStr.slice(0, 7);
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatDate(dateStr) {
+  const [y, m, d] = dateStr.split("-");
+  return `${parseInt(d, 10)} ${MONTH_LABELS[parseInt(m, 10) - 1]} ${y}`;
 }
 
-function populatePartyOptions(mentions) {
+let allMentions = [];
+let state = { house: "All", party: "", search: "", expandedId: null, trendYear: null };
+
+function computeStatsAndCharts() {
+  document.getElementById("stat-total").textContent = allMentions.length;
+  document.getElementById("stat-debates").textContent =
+    new Set(allMentions.map((m) => m.debate_title)).size;
+  const commonsCount = allMentions.filter((m) => m.house === "Commons").length;
+  document.getElementById("stat-commons-pct").textContent =
+    `${Math.round((commonsCount / allMentions.length) * 100)}%`;
+
+  renderBarChart("chart-speakers", topSpeakers(8));
+  renderBarChart("chart-parties", byParty());
+}
+
+function topSpeakers(limit) {
+  const counts = new Map();
+  for (const m of allMentions) {
+    const entry = counts.get(m.speaker) || { name: m.speaker, party: m.party, count: 0 };
+    entry.count += 1;
+    counts.set(m.speaker, entry);
+  }
+  const ranked = [...counts.values()].sort((a, b) => b.count - a.count).slice(0, limit);
+  const max = ranked.length ? ranked[0].count : 1;
+  return ranked.map((s) => ({ name: s.name, count: s.count, color: partyColor(s.party), pct: (s.count / max) * 100 }));
+}
+
+function byParty() {
+  const counts = new Map();
+  for (const m of allMentions) {
+    const party = m.party || "No party listed";
+    counts.set(party, (counts.get(party) || 0) + 1);
+  }
+  const ranked = [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+  const max = ranked.length ? ranked[0].count : 1;
+  return ranked.map((p) => ({ name: p.name, count: p.count, color: partyColor(p.name), pct: (p.count / max) * 100 }));
+}
+
+function renderBarChart(containerId, rows) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  for (const row of rows) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "chart-row";
+
+    const dot = document.createElement("span");
+    dot.className = "chart-dot";
+    dot.style.backgroundColor = row.color;
+
+    const label = document.createElement("span");
+    label.className = "chart-label";
+    label.textContent = row.name;
+    label.title = row.name;
+
+    const track = document.createElement("span");
+    track.className = "chart-track";
+    const bar = document.createElement("span");
+    bar.className = "chart-bar-fill";
+    bar.style.width = `${row.pct}%`;
+    bar.style.backgroundColor = row.color;
+    track.appendChild(bar);
+
+    const count = document.createElement("span");
+    count.className = "chart-count";
+    count.textContent = row.count;
+
+    rowEl.append(dot, label, track, count);
+    container.appendChild(rowEl);
+  }
+}
+
+function availableYears() {
+  return [...new Set(allMentions.map((m) => m.date.slice(0, 4)))].sort();
+}
+
+function renderTrend() {
+  const yearSelect = document.getElementById("trend-year");
+  if (!yearSelect.options.length) {
+    for (const year of availableYears()) {
+      const option = document.createElement("option");
+      option.value = year;
+      option.textContent = year;
+      yearSelect.appendChild(option);
+    }
+    yearSelect.value = state.trendYear;
+    yearSelect.addEventListener("change", () => {
+      state.trendYear = yearSelect.value;
+      renderTrend();
+    });
+  }
+
+  const counts = {};
+  for (const m of allMentions) {
+    if (m.date.slice(0, 4) !== state.trendYear) continue;
+    const month = m.date.slice(5, 7);
+    counts[month] = (counts[month] || 0) + 1;
+  }
+  const max = Math.max(1, ...Object.values(counts));
+
+  const barsContainer = document.getElementById("trend-bars");
+  barsContainer.innerHTML = "";
+  for (let m = 1; m <= 12; m++) {
+    const key = String(m).padStart(2, "0");
+    const count = counts[key] || 0;
+    const barHeight = Math.max(3, Math.round((count / max) * 48));
+
+    const col = document.createElement("div");
+    col.className = "trend-col";
+
+    const bar = document.createElement("div");
+    bar.className = "trend-bar";
+    bar.style.height = `${barHeight}px`;
+    bar.title = String(count);
+
+    const label = document.createElement("div");
+    label.className = "trend-month-label";
+    label.textContent = MONTH_LABELS[m - 1];
+
+    col.append(bar, label);
+    barsContainer.appendChild(col);
+  }
+}
+
+function renderHouseSegmented() {
+  const container = document.getElementById("house-segmented");
+  container.innerHTML = "";
+  for (const house of ["All", "Commons", "Lords"]) {
+    const button = document.createElement("button");
+    button.textContent = house;
+    button.className = state.house === house ? "segmented-btn active" : "segmented-btn";
+    button.addEventListener("click", () => {
+      state.house = house;
+      renderHouseSegmented();
+      renderList();
+    });
+    container.appendChild(button);
+  }
+}
+
+function populatePartyOptions() {
   const select = document.getElementById("filter-party");
-  const parties = [...new Set(mentions.map((m) => m.party).filter(Boolean))].sort();
+  const parties = [...new Set(allMentions.map((m) => m.party).filter(Boolean))].sort();
   for (const party of parties) {
     const option = document.createElement("option");
     option.value = party;
@@ -41,214 +187,129 @@ function populatePartyOptions(mentions) {
   }
 }
 
-function currentFilters() {
-  return {
-    house: document.getElementById("filter-house").value,
-    party: document.getElementById("filter-party").value,
-    speaker: document.getElementById("filter-speaker").value.trim().toLowerCase(),
-  };
-}
-
-function applyFilters(mentions, filters) {
-  return mentions.filter((m) => {
-    if (filters.house && m.house !== filters.house) return false;
-    if (filters.party && m.party !== filters.party) return false;
-    if (filters.speaker && !m.speaker.toLowerCase().includes(filters.speaker)) return false;
+function filteredMentions() {
+  return allMentions.filter((m) => {
+    if (state.house !== "All" && m.house !== state.house) return false;
+    if (state.party && m.party !== state.party) return false;
+    if (state.search) {
+      const q = state.search.toLowerCase();
+      const matchesSpeaker = m.speaker.toLowerCase().includes(q);
+      const matchesDebate = m.debate_title.toLowerCase().includes(q);
+      if (!matchesSpeaker && !matchesDebate) return false;
+    }
     return true;
   });
 }
 
-function renderTable(mentions) {
-  const tbody = document.querySelector("#mentions tbody");
-  tbody.innerHTML = "";
-  for (const mention of mentions) {
-    const row = document.createElement("tr");
-    for (const value of [mention.date, mention.house, mention.speaker, mention.party ?? ""]) {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.appendChild(cell);
-    }
+function renderList() {
+  const rows = filteredMentions();
+  const listEl = document.getElementById("mentions-list");
+  const emptyEl = document.getElementById("empty-state");
+  listEl.innerHTML = "";
 
-    const debateCell = document.createElement("td");
-    debateCell.textContent = mention.debate_title;
-    row.appendChild(debateCell);
+  emptyEl.hidden = rows.length > 0;
+  if (rows.length === 0) return;
 
-    const link = document.createElement("a");
-    link.href = mention.hansard_url;
-    link.textContent = mention.text;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    const mentionCell = document.createElement("td");
-    mentionCell.appendChild(link);
-    row.appendChild(mentionCell);
+  for (const [index, mention] of rows.entries()) {
+    const rowId = `${mention.hansard_url}#${index}`;
+    const expanded = state.expandedId === rowId;
+    const color = partyColor(mention.party);
 
-    tbody.appendChild(row);
-  }
-}
+    const wrapper = document.createElement("div");
+    wrapper.className = "mention-row-wrapper";
 
-function renderChart(mentions) {
-  const svg = document.getElementById("chart");
-  svg.innerHTML = "";
-
-  const counts = {};
-  for (const m of mentions) {
-    const key = monthKey(m.date);
-    counts[key] = (counts[key] || 0) + 1;
-  }
-  const months = Object.keys(counts).sort();
-  if (months.length === 0) return;
-
-  const width = svg.clientWidth || 800;
-  const height = 160;
-  const padding = 20;
-  const barGap = 2;
-  const barWidth = (width - padding) / months.length - barGap;
-  const maxCount = Math.max(...months.map((m) => counts[m]));
-
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-
-  months.forEach((month, i) => {
-    const count = counts[month];
-    const barHeight = maxCount ? (count / maxCount) * (height - padding) : 0;
-    const x = padding + i * (barWidth + barGap);
-    const y = height - padding - barHeight;
-
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", x);
-    rect.setAttribute("y", y);
-    rect.setAttribute("width", Math.max(barWidth, 1));
-    rect.setAttribute("height", barHeight);
-    rect.setAttribute("class", "chart-bar");
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = `${month}: ${count} mention${count === 1 ? "" : "s"}`;
-    rect.appendChild(title);
-    svg.appendChild(rect);
-
-    if (i % 3 === 0) {
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", x);
-      text.setAttribute("y", height - 4);
-      text.setAttribute("class", "chart-label");
-      text.textContent = month;
-      svg.appendChild(text);
-    }
-  });
-}
-
-function renderTopSpeakers(mentions, limit = 10) {
-  const list = document.getElementById("top-speakers");
-  list.innerHTML = "";
-
-  if (mentions.length === 0) {
-    list.innerHTML = "<li class=\"ranking-empty\">No mentions match these filters.</li>";
-    return;
-  }
-
-  const counts = new Map();
-  for (const m of mentions) {
-    const entry = counts.get(m.speaker) || { party: m.party, count: 0 };
-    entry.count += 1;
-    counts.set(m.speaker, entry);
-  }
-
-  const ranked = [...counts.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, limit);
-
-  for (const [speaker, { party, count }] of ranked) {
-    const item = document.createElement("li");
-
-    const dot = document.createElement("span");
-    dot.className = "party-dot";
-    dot.style.backgroundColor = partyColor(party);
-
-    const name = document.createElement("span");
-    name.className = "ranking-name";
-    name.textContent = speaker;
-
-    const partyLabel = document.createElement("span");
-    partyLabel.className = "ranking-party";
-    partyLabel.textContent = party || "No party listed";
-
-    const countLabel = document.createElement("span");
-    countLabel.className = "ranking-count";
-    countLabel.textContent = count;
-
-    item.append(dot, name, partyLabel, countLabel);
-    list.appendChild(item);
-  }
-}
-
-function renderPartyRanking(mentions) {
-  const container = document.getElementById("party-ranking");
-  container.innerHTML = "";
-
-  if (mentions.length === 0) {
-    container.innerHTML = "<p class=\"ranking-empty\">No mentions match these filters.</p>";
-    return;
-  }
-
-  const counts = new Map();
-  for (const m of mentions) {
-    const party = m.party || "No party listed";
-    counts.set(party, (counts.get(party) || 0) + 1);
-  }
-
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  const maxCount = ranked[0][1];
-
-  for (const [party, count] of ranked) {
     const row = document.createElement("div");
-    row.className = "party-row";
+    row.className = "mention-row";
+    row.addEventListener("click", () => {
+      state.expandedId = expanded ? null : rowId;
+      renderList();
+    });
 
-    const label = document.createElement("span");
-    label.className = "party-row-label";
-    label.textContent = party;
-    label.title = party;
+    const dateCell = document.createElement("div");
+    dateCell.className = "cell-date";
+    dateCell.textContent = formatDate(mention.date);
 
-    const barTrack = document.createElement("span");
-    barTrack.className = "party-row-track";
-    const bar = document.createElement("span");
-    bar.className = "party-row-bar";
-    bar.style.width = `${(count / maxCount) * 100}%`;
-    bar.style.backgroundColor = partyColor(party);
-    barTrack.appendChild(bar);
+    const houseCell = document.createElement("div");
+    const housePill = document.createElement("span");
+    housePill.className = "house-pill";
+    housePill.textContent = mention.house;
+    houseCell.appendChild(housePill);
 
-    const countLabel = document.createElement("span");
-    countLabel.className = "party-row-count";
-    countLabel.textContent = count;
+    const speakerCell = document.createElement("div");
+    speakerCell.className = "cell-speaker";
+    const speakerLine = document.createElement("div");
+    speakerLine.className = "speaker-line";
+    const dot = document.createElement("span");
+    dot.className = "speaker-dot";
+    dot.style.backgroundColor = color;
+    const name = document.createElement("span");
+    name.className = "speaker-name";
+    name.textContent = mention.speaker;
+    speakerLine.append(dot, name);
+    const partyLine = document.createElement("div");
+    partyLine.className = "speaker-party";
+    partyLine.textContent = mention.party || "No party listed";
+    speakerCell.append(speakerLine, partyLine);
 
-    row.append(label, barTrack, countLabel);
-    container.appendChild(row);
+    const debateCell = document.createElement("div");
+    debateCell.className = "cell-debate";
+    const debateTitle = document.createElement("div");
+    debateTitle.className = "debate-title";
+    debateTitle.textContent = mention.debate_title;
+    const quotePreview = document.createElement("div");
+    quotePreview.className = "quote-preview";
+    quotePreview.textContent = mention.text;
+    debateCell.append(debateTitle, quotePreview);
+
+    const chevronCell = document.createElement("div");
+    chevronCell.className = "chevron";
+    chevronCell.textContent = "▸";
+    chevronCell.style.transform = expanded ? "rotate(90deg)" : "rotate(0deg)";
+
+    row.append(dateCell, houseCell, speakerCell, debateCell, chevronCell);
+    wrapper.appendChild(row);
+
+    if (expanded) {
+      const expandedBlock = document.createElement("div");
+      expandedBlock.className = "expanded-block";
+      const quote = document.createElement("blockquote");
+      quote.className = "expanded-quote";
+      quote.style.borderLeftColor = color;
+      quote.textContent = `“${mention.text}”`;
+      const link = document.createElement("a");
+      link.className = "hansard-link";
+      link.href = mention.hansard_url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "View on Hansard →";
+      expandedBlock.append(quote, link);
+      wrapper.appendChild(expandedBlock);
+    }
+
+    listEl.appendChild(wrapper);
   }
-}
-
-function render() {
-  const filtered = applyFilters(allMentions, currentFilters());
-  document.getElementById("count").textContent =
-    `${filtered.length} of ${allMentions.length} mentions of AI shown`;
-  renderChart(filtered);
-  renderTopSpeakers(filtered);
-  renderPartyRanking(filtered);
-  renderTable(filtered);
-}
-
-let debounceHandle;
-function renderDebounced() {
-  clearTimeout(debounceHandle);
-  debounceHandle = setTimeout(render, 150);
 }
 
 fetch("./data/mentions.json")
   .then((response) => response.json())
   .then((data) => {
     allMentions = data.mentions;
-    populatePartyOptions(allMentions);
+    const years = availableYears();
+    state.trendYear = years[years.length - 1];
 
-    document.getElementById("filter-house").addEventListener("change", render);
-    document.getElementById("filter-party").addEventListener("change", render);
-    document.getElementById("filter-speaker").addEventListener("input", renderDebounced);
+    computeStatsAndCharts();
+    renderTrend();
+    renderHouseSegmented();
+    populatePartyOptions();
 
-    render();
+    document.getElementById("filter-party").addEventListener("change", (e) => {
+      state.party = e.target.value;
+      renderList();
+    });
+    document.getElementById("filter-search").addEventListener("input", (e) => {
+      state.search = e.target.value.trim();
+      renderList();
+    });
+
+    renderList();
   });

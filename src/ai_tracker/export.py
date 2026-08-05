@@ -13,7 +13,7 @@ import csv
 import json
 import sqlite3
 
-TEXT_SNIPPET_LENGTH = 320
+TEXT_SNIPPET_LENGTH = 700
 
 
 def _snippet(text):
