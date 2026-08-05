@@ -498,3 +498,21 @@ h1 {
   color: rgba(28, 26, 23, 0.5);
   font-size: 15px;
 }
+
+.load-more-btn {
+  display: block;
+  margin: 28px auto 0;
+  border: 1px solid rgba(28, 26, 23, 0.2);
+  background: transparent;
+  color: #1c1a17;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.load-more-btn:hover {
+  background: rgba(28, 26, 23, 0.05);
+}

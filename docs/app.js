@@ -35,8 +35,10 @@ function formatDate(dateStr) {
   return `${parseInt(d, 10)} ${MONTH_LABELS[parseInt(m, 10) - 1]} ${y}`;
 }
 
+const PAGE_SIZE = 25;
+
 let allMentions = [];
-let state = { globalYear: "All", globalHouse: "All", party: "", search: "", expandedId: null };
+let state = { globalYear: "All", globalHouse: "All", party: "", search: "", expandedId: null, visibleCount: PAGE_SIZE };
 
 function availableYears() {
   return [...new Set(allMentions.map((m) => m.date.slice(0, 4)))].sort();
@@ -303,13 +305,18 @@ function filteredMentions() {
 }
 
 function renderList() {
-  const rows = filteredMentions();
+  const allRows = filteredMentions();
+  const rows = allRows.slice(0, state.visibleCount);
   const listEl = document.getElementById("mentions-list");
   const emptyEl = document.getElementById("empty-state");
+  const loadMoreBtn = document.getElementById("load-more-btn");
   listEl.innerHTML = "";
 
-  emptyEl.hidden = rows.length > 0;
-  if (rows.length === 0) return;
+  emptyEl.hidden = allRows.length > 0;
+  if (allRows.length === 0) {
+    loadMoreBtn.hidden = true;
+    return;
+  }
 
   for (const [index, mention] of rows.entries()) {
     const rowId = `${mention.hansard_url}#${index}`;
@@ -389,12 +396,24 @@ function renderList() {
 
     listEl.appendChild(wrapper);
   }
+
+  const remaining = allRows.length - rows.length;
+  loadMoreBtn.hidden = remaining <= 0;
+  if (remaining > 0) {
+    loadMoreBtn.textContent = `Show ${Math.min(PAGE_SIZE, remaining)} more (${remaining} remaining)`;
+  }
 }
+
+document.getElementById("load-more-btn").addEventListener("click", () => {
+  state.visibleCount += PAGE_SIZE;
+  renderList();
+});
 
 // Called when a GLOBAL filter (year/house) changes: recomputes stats,
 // both ranking charts, the trend chart, the recent-debates chart, and the
 // list (since the list sits on top of the global filter too).
 function renderGlobal() {
+  state.visibleCount = PAGE_SIZE;
   const gf = globallyFiltered();
   computeStatsAndCharts(gf);
   renderTrend(gf);
@@ -412,10 +431,12 @@ fetch("./data/mentions.json")
 
     document.getElementById("filter-party").addEventListener("change", (e) => {
       state.party = e.target.value;
+      state.visibleCount = PAGE_SIZE;
       renderList();
     });
     document.getElementById("filter-search").addEventListener("input", (e) => {
       state.search = e.target.value.trim();
+      state.visibleCount = PAGE_SIZE;
       renderList();
     });
 
