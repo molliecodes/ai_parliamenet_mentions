@@ -60,6 +60,35 @@ h1 {
   margin-top: 36px;
 }
 
+/* Global filters — drive stats, both charts, the recent-debates chart,
+   the trend chart, and the list all at once. */
+
+.global-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.global-filter-label {
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(28, 26, 23, 0.5);
+}
+
+#global-year {
+  border: none;
+  border-bottom: 1.5px solid rgba(28, 26, 23, 0.3);
+  background: transparent;
+  padding: 6px 4px;
+  font-size: 14px;
+  font-family: "IBM Plex Sans", sans-serif;
+  color: #1c1a17;
+  cursor: pointer;
+}
+
 /* Stats + monthly trend row */
 
 .stats-row {
@@ -84,6 +113,14 @@ h1 {
   margin-top: 4px;
 }
 
+.stat-caption {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: rgba(28, 26, 23, 0.45);
+  max-width: 200px;
+  margin-top: 6px;
+}
+
 .trend {
   flex: 1;
   min-width: 280px;
@@ -95,17 +132,6 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
-}
-
-#trend-year {
-  border: none;
-  border-bottom: 1.5px solid rgba(28, 26, 23, 0.3);
-  background: transparent;
-  padding: 2px;
-  font-size: 12.5px;
-  font-family: "IBM Plex Sans", sans-serif;
-  color: #1c1a17;
-  cursor: pointer;
 }
 
 .trend-bars {
@@ -215,13 +241,68 @@ h1 {
   flex: none;
 }
 
+.chart-empty {
+  font-size: 13px;
+  color: rgba(28, 26, 23, 0.5);
+  margin-top: 22px;
+}
+
+/* Recent-debates card — a plain list rather than the dot+track+bar
+   pattern, since recency isn't a magnitude to compare proportionally. */
+
+.debate-rows {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.debate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1c1a17;
+  text-decoration: none;
+}
+
+.debate-row:hover .debate-row-title {
+  color: #7a2e2e;
+}
+
+.debate-row-date {
+  font-size: 12px;
+  color: rgba(28, 26, 23, 0.5);
+  flex: none;
+  width: 64px;
+}
+
+.debate-row-title {
+  font-family: "Source Serif 4", serif;
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debate-row-count {
+  font-family: "Source Serif 4", serif;
+  font-size: 14px;
+  font-weight: 600;
+  flex: none;
+  width: 20px;
+  text-align: right;
+}
+
 /* Filter bar */
 
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
   margin-top: 68px;
   padding-bottom: 18px;

@@ -16,23 +16,31 @@
     <p class="subhead">Tracking every mention of artificial intelligence across the House of Commons and House of Lords, from committee rooms to the despatch box.</p>
     <div class="divider"></div>
 
+    <div class="global-filter-bar">
+      <div class="global-filter-label">Viewing</div>
+      <select id="global-year"></select>
+      <div class="segmented" id="global-house-segmented"></div>
+    </div>
+
     <div class="stats-row">
       <div class="stat">
         <div class="stat-label">Total mentions</div>
         <div class="stat-value" id="stat-total">–</div>
+        <div class="stat-caption">Every recorded mention of AI in a debate contribution, across both Houses.</div>
       </div>
       <div class="stat">
         <div class="stat-label">Debates covered</div>
         <div class="stat-value" id="stat-debates">–</div>
+        <div class="stat-caption">Distinct debates or sittings in which AI was mentioned at least once.</div>
       </div>
       <div class="stat">
         <div class="stat-label">Commons share</div>
         <div class="stat-value" id="stat-commons-pct">–</div>
+        <div class="stat-caption">Share of mentions from the Commons versus the Lords.</div>
       </div>
       <div class="trend">
         <div class="trend-header">
           <div class="stat-label">Mentions by month</div>
-          <select id="trend-year"></select>
         </div>
         <div class="trend-bars" id="trend-bars"></div>
       </div>
@@ -49,10 +57,14 @@
         <div class="chart-subtitle">Mentions grouped by party affiliation</div>
         <div class="chart-rows" id="chart-parties"></div>
       </div>
+      <div class="chart-card">
+        <div class="chart-title">Most recent AI debates</div>
+        <div class="chart-subtitle">Latest 10 distinct debates</div>
+        <div class="debate-rows" id="chart-recent-debates"></div>
+      </div>
     </div>
 
     <div class="filter-bar">
-      <div class="segmented" id="house-segmented"></div>
       <div class="filter-controls">
         <select id="filter-party">
           <option value="">All</option>

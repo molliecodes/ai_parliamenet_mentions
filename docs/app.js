@@ -36,23 +36,46 @@ function formatDate(dateStr) {
 }
 
 let allMentions = [];
-let state = { house: "All", party: "", search: "", expandedId: null, trendYear: null };
+let state = { globalYear: "All", globalHouse: "All", party: "", search: "", expandedId: null };
 
-function computeStatsAndCharts() {
-  document.getElementById("stat-total").textContent = allMentions.length;
-  document.getElementById("stat-debates").textContent =
-    new Set(allMentions.map((m) => m.debate_title)).size;
-  const commonsCount = allMentions.filter((m) => m.house === "Commons").length;
-  document.getElementById("stat-commons-pct").textContent =
-    `${Math.round((commonsCount / allMentions.length) * 100)}%`;
-
-  renderBarChart("chart-speakers", topSpeakers(8));
-  renderBarChart("chart-parties", byParty());
+function availableYears() {
+  return [...new Set(allMentions.map((m) => m.date.slice(0, 4)))].sort();
 }
 
-function topSpeakers(limit) {
+// Filters by the two GLOBAL dimensions only (year, house) — this is the
+// shared input to stats, both ranking charts, the trend chart, and the
+// recent-debates chart. Party/search are list-only refinements applied on
+// top of this in filteredMentions().
+function globallyFiltered() {
+  return allMentions.filter((m) => {
+    if (state.globalYear !== "All" && m.date.slice(0, 4) !== state.globalYear) return false;
+    if (state.globalHouse !== "All" && m.house !== state.globalHouse) return false;
+    return true;
+  });
+}
+
+function computeStatsAndCharts(mentions) {
+  document.getElementById("stat-total").textContent = mentions.length;
+
+  // Distinct debates = unique hansard_url, not unique title — generic
+  // titles like "Topical Questions" recur across dozens of different
+  // sitting dates as the identical string, so counting by title alone
+  // undercounts real distinct debates.
+  document.getElementById("stat-debates").textContent =
+    new Set(mentions.map((m) => m.hansard_url)).size;
+
+  const commonsCount = mentions.filter((m) => m.house === "Commons").length;
+  document.getElementById("stat-commons-pct").textContent =
+    mentions.length ? `${Math.round((commonsCount / mentions.length) * 100)}%` : "–";
+
+  renderBarChart("chart-speakers", topSpeakers(mentions, 8));
+  renderBarChart("chart-parties", byParty(mentions));
+  renderRecentDebates(mentions, 10);
+}
+
+function topSpeakers(mentions, limit) {
   const counts = new Map();
-  for (const m of allMentions) {
+  for (const m of mentions) {
     const entry = counts.get(m.speaker) || { name: m.speaker, party: m.party, count: 0 };
     entry.count += 1;
     counts.set(m.speaker, entry);
@@ -62,9 +85,9 @@ function topSpeakers(limit) {
   return ranked.map((s) => ({ name: s.name, count: s.count, color: partyColor(s.party), pct: (s.count / max) * 100 }));
 }
 
-function byParty() {
+function byParty(mentions) {
   const counts = new Map();
-  for (const m of allMentions) {
+  for (const m of mentions) {
     const party = m.party || "No party listed";
     counts.set(party, (counts.get(party) || 0) + 1);
   }
@@ -106,74 +129,153 @@ function renderBarChart(containerId, rows) {
     rowEl.append(dot, label, track, count);
     container.appendChild(rowEl);
   }
+  if (rows.length === 0) {
+    container.innerHTML = "<div class=\"chart-empty\">No mentions in this view.</div>";
+  }
 }
 
-function availableYears() {
-  return [...new Set(allMentions.map((m) => m.date.slice(0, 4)))].sort();
-}
-
-function renderTrend() {
-  const yearSelect = document.getElementById("trend-year");
-  if (!yearSelect.options.length) {
-    for (const year of availableYears()) {
-      const option = document.createElement("option");
-      option.value = year;
-      option.textContent = year;
-      yearSelect.appendChild(option);
+function computeRecentDebates(mentions, limit) {
+  const debates = new Map();
+  for (const m of mentions) {
+    const existing = debates.get(m.hansard_url);
+    if (!existing) {
+      debates.set(m.hansard_url, { title: m.debate_title, house: m.house, date: m.date, count: 1, url: m.hansard_url });
+    } else {
+      existing.count += 1;
+      if (m.date > existing.date) existing.date = m.date;
     }
-    yearSelect.value = state.trendYear;
-    yearSelect.addEventListener("change", () => {
-      state.trendYear = yearSelect.value;
-      renderTrend();
-    });
+  }
+  return [...debates.values()].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, limit);
+}
+
+function renderRecentDebates(mentions, limit) {
+  const container = document.getElementById("chart-recent-debates");
+  container.innerHTML = "";
+  const debates = computeRecentDebates(mentions, limit);
+
+  if (debates.length === 0) {
+    container.innerHTML = "<div class=\"chart-empty\">No debates in this view.</div>";
+    return;
   }
 
-  const counts = {};
-  for (const m of allMentions) {
-    if (m.date.slice(0, 4) !== state.trendYear) continue;
-    const month = m.date.slice(5, 7);
-    counts[month] = (counts[month] || 0) + 1;
-  }
-  const max = Math.max(1, ...Object.values(counts));
+  for (const debate of debates) {
+    const row = document.createElement("a");
+    row.className = "debate-row";
+    row.href = debate.url;
+    row.target = "_blank";
+    row.rel = "noopener noreferrer";
 
+    const date = document.createElement("span");
+    date.className = "debate-row-date";
+    date.textContent = formatDate(debate.date);
+
+    const title = document.createElement("span");
+    title.className = "debate-row-title";
+    title.textContent = debate.title;
+    title.title = debate.title;
+
+    const housePill = document.createElement("span");
+    housePill.className = "house-pill";
+    housePill.textContent = debate.house;
+
+    const count = document.createElement("span");
+    count.className = "debate-row-count";
+    count.textContent = debate.count;
+
+    row.append(date, title, housePill, count);
+    container.appendChild(row);
+  }
+}
+
+function renderTrend(mentions) {
   const barsContainer = document.getElementById("trend-bars");
   barsContainer.innerHTML = "";
-  for (let m = 1; m <= 12; m++) {
-    const key = String(m).padStart(2, "0");
-    const count = counts[key] || 0;
-    const barHeight = Math.max(3, Math.round((count / max) * 48));
 
-    const col = document.createElement("div");
-    col.className = "trend-col";
+  if (state.globalYear !== "All") {
+    // Compact Jan-Dec view for a single selected year.
+    const counts = {};
+    for (const m of mentions) {
+      const month = m.date.slice(5, 7);
+      counts[month] = (counts[month] || 0) + 1;
+    }
+    const max = Math.max(1, ...Object.values(counts));
 
-    const bar = document.createElement("div");
-    bar.className = "trend-bar";
-    bar.style.height = `${barHeight}px`;
-    bar.title = String(count);
-
-    const label = document.createElement("div");
-    label.className = "trend-month-label";
-    label.textContent = MONTH_LABELS[m - 1];
-
-    col.append(bar, label);
-    barsContainer.appendChild(col);
+    for (let m = 1; m <= 12; m++) {
+      const key = String(m).padStart(2, "0");
+      const count = counts[key] || 0;
+      appendTrendBar(barsContainer, MONTH_LABELS[m - 1], count, Math.max(3, Math.round((count / max) * 48)), count);
+    }
+    return;
   }
+
+  // "All" years: full chronological view across the whole date range
+  // instead of a Jan-Dec view, since mixing years into 12 buckets isn't
+  // meaningful. Label every 3rd bar to avoid crowding, same pattern as
+  // the pre-redesign chart.
+  const counts = {};
+  for (const m of mentions) {
+    const key = m.date.slice(0, 7);
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  const months = Object.keys(counts).sort();
+  const max = Math.max(1, ...months.map((k) => counts[k]));
+
+  months.forEach((key, i) => {
+    const count = counts[key];
+    appendTrendBar(barsContainer, i % 3 === 0 ? key : "", count, Math.max(3, Math.round((count / max) * 48)), count);
+  });
 }
 
-function renderHouseSegmented() {
-  const container = document.getElementById("house-segmented");
+function appendTrendBar(container, label, count, barHeight, title) {
+  const col = document.createElement("div");
+  col.className = "trend-col";
+
+  const bar = document.createElement("div");
+  bar.className = "trend-bar";
+  bar.style.height = `${barHeight}px`;
+  bar.title = String(title);
+
+  const labelEl = document.createElement("div");
+  labelEl.className = "trend-month-label";
+  labelEl.textContent = label;
+
+  col.append(bar, labelEl);
+  container.appendChild(col);
+}
+
+function renderGlobalHouseSegmented() {
+  const container = document.getElementById("global-house-segmented");
   container.innerHTML = "";
   for (const house of ["All", "Commons", "Lords"]) {
     const button = document.createElement("button");
     button.textContent = house;
-    button.className = state.house === house ? "segmented-btn active" : "segmented-btn";
+    button.className = state.globalHouse === house ? "segmented-btn active" : "segmented-btn";
     button.addEventListener("click", () => {
-      state.house = house;
-      renderHouseSegmented();
-      renderList();
+      state.globalHouse = house;
+      renderGlobalHouseSegmented();
+      renderGlobal();
     });
     container.appendChild(button);
   }
+}
+
+function populateGlobalYearSelect() {
+  const select = document.getElementById("global-year");
+  const option = document.createElement("option");
+  option.value = "All";
+  option.textContent = "All years";
+  select.appendChild(option);
+  for (const year of availableYears()) {
+    const o = document.createElement("option");
+    o.value = year;
+    o.textContent = year;
+    select.appendChild(o);
+  }
+  select.value = state.globalYear;
+  select.addEventListener("change", () => {
+    state.globalYear = select.value;
+    renderGlobal();
+  });
 }
 
 function populatePartyOptions() {
@@ -188,8 +290,7 @@ function populatePartyOptions() {
 }
 
 function filteredMentions() {
-  return allMentions.filter((m) => {
-    if (state.house !== "All" && m.house !== state.house) return false;
+  return globallyFiltered().filter((m) => {
     if (state.party && m.party !== state.party) return false;
     if (state.search) {
       const q = state.search.toLowerCase();
@@ -290,16 +391,23 @@ function renderList() {
   }
 }
 
+// Called when a GLOBAL filter (year/house) changes: recomputes stats,
+// both ranking charts, the trend chart, the recent-debates chart, and the
+// list (since the list sits on top of the global filter too).
+function renderGlobal() {
+  const gf = globallyFiltered();
+  computeStatsAndCharts(gf);
+  renderTrend(gf);
+  renderList();
+}
+
 fetch("./data/mentions.json")
   .then((response) => response.json())
   .then((data) => {
     allMentions = data.mentions;
-    const years = availableYears();
-    state.trendYear = years[years.length - 1];
 
-    computeStatsAndCharts();
-    renderTrend();
-    renderHouseSegmented();
+    populateGlobalYearSelect();
+    renderGlobalHouseSegmented();
     populatePartyOptions();
 
     document.getElementById("filter-party").addEventListener("change", (e) => {
@@ -311,5 +419,5 @@ fetch("./data/mentions.json")
       renderList();
     });
 
-    renderList();
+    renderGlobal();
   });
